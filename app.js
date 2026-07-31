@@ -1,10 +1,27 @@
 const MOSCOW={lat:55.7558,lon:37.6176,label:"Москва · по умолчанию",precise:false};
 const STORAGE_KEY="ryadom_pages_catalog_v1";
 const THEME_STORAGE_KEY="ryadom_theme_v1";
+const LOCATION_STORAGE_KEY="ryadom_location_v1";
+const LOCATION_CACHE_KEY="ryadom_location_search_cache_v1";
+const GEOCODER_ENDPOINT="https://nominatim.openstreetmap.org";
 const THEME_IDS=["burgundy","ruby","rose","violet","indigo","cobalt","ocean","teal","emerald","forest","amber","graphite"];
 const THEME_COLORS={burgundy:"#741b36",ruby:"#a91f45",rose:"#b13b68",violet:"#6939b7",indigo:"#3f4fb1",cobalt:"#1f5ea8",ocean:"#08718a",teal:"#14766f",emerald:"#187a59",forest:"#2c633f",amber:"#a65f00",graphite:"#514a55"};
-const state={location:{...MOSCOW},query:"",products:[],liveOffers:[],catalog:loadCatalog(),stores:[],sort:"price"};
+const state={location:loadLocation(),locationResults:[],query:"",products:[],liveOffers:[],catalog:loadCatalog(),stores:[],sort:"price"};
 const $=selector=>document.querySelector(selector);
+
+function loadLocation(){
+  try{
+    const saved=JSON.parse(localStorage.getItem(LOCATION_STORAGE_KEY)||"null");
+    const lat=Number(saved?.lat),lon=Number(saved?.lon),label=String(saved?.label||"").trim();
+    if(Number.isFinite(lat)&&Number.isFinite(lon)&&lat>=-90&&lat<=90&&lon>=-180&&lon<=180&&label)return{lat,lon,label,precise:Boolean(saved.precise)};
+  }catch{}
+  return{...MOSCOW};
+}
+function saveLocation(location){
+  state.location={lat:Number(location.lat),lon:Number(location.lon),label:String(location.label),precise:Boolean(location.precise)};
+  localStorage.setItem(LOCATION_STORAGE_KEY,JSON.stringify(state.location));
+  $("#locationLabel").textContent=state.location.label;
+}
 
 function loadThemeSelection(){
   try{
@@ -183,20 +200,68 @@ async function performSearch(rawQuery){
 
 async function locateUser(){
   if(!navigator.geolocation){toast("Геолокация не поддерживается");return}
-  $("#locationLabel").textContent="Определяем место…";$("#locateButton").disabled=true;
+  const button=$("#useGeolocationButton");button.disabled=true;button.textContent="Определяем место…";
   navigator.geolocation.getCurrentPosition(async position=>{
-    state.location={lat:position.coords.latitude,lon:position.coords.longitude,label:"Текущее место",precise:true};
+    const location={lat:position.coords.latitude,lon:position.coords.longitude,label:"Текущее место",precise:true};
     try{
-      const params=new URLSearchParams({lat:state.location.lat,lon:state.location.lon,format:"jsonv2",zoom:"14","accept-language":"ru"});
-      const response=await fetch(`https://nominatim.openstreetmap.org/reverse?${params}`);
-      if(response.ok){const data=await response.json(),a=data.address||{};state.location.label=[a.city||a.town||a.village||a.county,a.suburb||a.neighbourhood].filter(Boolean).join(" · ")||"Текущее место"}
+      const params=new URLSearchParams({lat:location.lat,lon:location.lon,format:"jsonv2",zoom:"14",addressdetails:"1","accept-language":"ru"});
+      const response=await fetch(`${GEOCODER_ENDPOINT}/reverse?${params}`);
+      if(response.ok){const data=await response.json(),a=data.address||{};location.label=[a.city||a.town||a.village||a.hamlet||a.municipality||a.county,a.suburb||a.neighbourhood].filter(Boolean).join(" · ")||"Текущее место"}
     }catch{}
-    $("#locationLabel").textContent=state.location.label;$("#locateButton").disabled=false;toast("Местоположение обновлено");
-    await loadStores();if(state.query)await performSearch(state.query);
+    saveLocation(location);button.disabled=false;button.textContent="◎ Использовать текущее место";$("#locationSheet").hidden=true;resetStores();toast("Местоположение обновлено");
+    if(state.query)await performSearch(state.query);
   },error=>{
-    $("#locationLabel").textContent=state.location.label;$("#locateButton").disabled=false;
+    button.disabled=false;button.textContent="◎ Использовать текущее место";
     toast(error.code===1?"Разрешите доступ к геолокации в Safari":"Не удалось определить местоположение");
   },{enableHighAccuracy:true,timeout:12000,maximumAge:300000});
+}
+
+function resetStores(){
+  state.stores=[];
+  $("#storeList").innerHTML='<div class="empty-card">Место выбрано. Нажмите ↻, чтобы показать ближайшие магазины.</div>';
+}
+function loadLocationCache(){try{return JSON.parse(localStorage.getItem(LOCATION_CACHE_KEY)||"{}")||{}}catch{return{}}}
+function saveLocationCache(cache){
+  const entries=Object.entries(cache).slice(-25);
+  try{localStorage.setItem(LOCATION_CACHE_KEY,JSON.stringify(Object.fromEntries(entries)))}catch{}
+}
+function locationResult(raw){
+  const address=raw.address||{};
+  const name=raw.name||address.city||address.town||address.village||address.hamlet||address.municipality||address.locality||String(raw.display_name||"").split(",")[0]||"Населённый пункт";
+  const region=address.state&&address.state!==name?address.state:"";
+  const district=address.state_district||address.county||address.district||"";
+  return{lat:Number(raw.lat),lon:Number(raw.lon),label:[name,region].filter(Boolean).join(" · "),name,detail:[district,region].filter((value,index,array)=>value&&array.indexOf(value)===index).join(" · ")||"Россия"};
+}
+function renderLocationResults(results){
+  const list=$("#locationResults");state.locationResults=results;
+  list.innerHTML=results.map((item,index)=>`<button class="location-result" type="button" data-location-index="${index}"><span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.detail)}</small></span><b>›</b></button>`).join("");
+}
+let lastGeocoderRequest=0;
+async function searchLocations(query){
+  const key=normalize(query),cache=loadLocationCache();
+  if(Array.isArray(cache[key]))return cache[key];
+  const wait=Math.max(0,1000-(Date.now()-lastGeocoderRequest));
+  if(wait)await new Promise(resolve=>setTimeout(resolve,wait));
+  const params=new URLSearchParams({q:query,format:"jsonv2",addressdetails:"1",countrycodes:"ru",layer:"address",featureType:"settlement",limit:"8","accept-language":"ru"});
+  lastGeocoderRequest=Date.now();
+  const response=await fetch(`${GEOCODER_ENDPOINT}/search?${params}`);
+  if(!response.ok)throw new Error();
+  const results=(await response.json()).map(locationResult).filter(item=>Number.isFinite(item.lat)&&Number.isFinite(item.lon));
+  cache[key]=results;saveLocationCache(cache);return results;
+}
+async function submitLocationSearch(event){
+  event.preventDefault();
+  const query=$("#locationSearchInput").value.trim(),button=$("#locationSearchButton"),status=$("#locationSearchStatus");
+  if(!query){status.textContent="Введите название населённого пункта.";return}
+  button.disabled=true;button.textContent="Ищем…";status.textContent="Поиск по России…";renderLocationResults([]);
+  try{
+    const results=await searchLocations(query);renderLocationResults(results);
+    status.textContent=results.length?`Найдено вариантов: ${results.length}`:"Ничего не найдено. Уточните название или добавьте регион.";
+  }catch{status.textContent="Поиск мест временно недоступен. Попробуйте ещё раз."}
+  button.disabled=false;button.textContent="Найти";
+}
+function chooseLocation(location){
+  saveLocation(location);$("#locationSheet").hidden=true;resetStores();toast(`Выбрано: ${location.label}`);if(state.query)performSearch(state.query);
 }
 
 async function loadStores(){
@@ -283,7 +348,14 @@ async function importCatalog(file){
 $("#searchForm").addEventListener("submit",event=>{event.preventDefault();performSearch()});
 document.querySelectorAll("[data-query]").forEach(button=>button.addEventListener("click",()=>performSearch(button.dataset.query)));
 $("#sortSelect").addEventListener("change",event=>{state.sort=event.target.value;renderOffers()});
-$("#locateButton").addEventListener("click",locateUser);$("#storesButton").addEventListener("click",loadStores);
+$("#locationLabel").textContent=state.location.label;
+$("#locateButton").addEventListener("click",()=>{$("#locationSheet").hidden=false;setTimeout(()=>$("#locationSearchInput").focus(),50)});$("#storesButton").addEventListener("click",loadStores);
+$("#locationSearchForm").addEventListener("submit",submitLocationSearch);
+$("#useGeolocationButton").addEventListener("click",locateUser);
+$("#locationResults").addEventListener("click",event=>{const button=event.target.closest("[data-location-index]");if(button)chooseLocation(state.locationResults[Number(button.dataset.locationIndex)])});
+document.querySelectorAll("[data-location-choice]").forEach(button=>button.addEventListener("click",()=>chooseLocation({lat:Number(button.dataset.lat),lon:Number(button.dataset.lon),label:button.dataset.label,precise:false})));
+$("#closeLocationSheet").addEventListener("click",()=>$("#locationSheet").hidden=true);
+$("#locationSheet").addEventListener("click",event=>{if(event.target===$("#locationSheet"))$("#locationSheet").hidden=true});
 $("#photoInput").addEventListener("change",event=>recognizePhoto(event.target.files?.[0]));
 $("#catalogInput").addEventListener("change",event=>importCatalog(event.target.files?.[0]));
 applyTheme(themeState.theme,themeState.mode,false);

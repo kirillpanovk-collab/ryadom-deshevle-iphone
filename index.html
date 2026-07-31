@@ -80,6 +80,29 @@
     </footer>
   </main>
 
+  <div id="locationSheet" class="sheet-backdrop" hidden>
+    <section class="sheet location-sheet" role="dialog" aria-modal="true" aria-labelledby="locationTitle">
+      <div class="sheet-head"><h2 id="locationTitle">Выбрать место</h2><button id="closeLocationSheet" class="close-button" type="button" aria-label="Закрыть">×</button></div>
+      <p>Найдите город, посёлок, село или другой населённый пункт России.</p>
+      <form id="locationSearchForm" class="location-search">
+        <input id="locationSearchInput" type="search" autocomplete="off" enterkeyhint="search" placeholder="Например, Суздаль" aria-label="Населённый пункт">
+        <button id="locationSearchButton" type="submit">Найти</button>
+      </form>
+      <div class="quick-locations" aria-label="Популярные города">
+        <button type="button" data-location-choice data-lat="55.7558" data-lon="37.6176" data-label="Москва">Москва</button>
+        <button type="button" data-location-choice data-lat="59.9343" data-lon="30.3351" data-label="Санкт-Петербург">Санкт-Петербург</button>
+        <button type="button" data-location-choice data-lat="55.0084" data-lon="82.9357" data-label="Новосибирск">Новосибирск</button>
+        <button type="button" data-location-choice data-lat="56.8389" data-lon="60.6057" data-label="Екатеринбург">Екатеринбург</button>
+        <button type="button" data-location-choice data-lat="55.7961" data-lon="49.1064" data-label="Казань">Казань</button>
+        <button type="button" data-location-choice data-lat="45.0355" data-lon="38.9753" data-label="Краснодар">Краснодар</button>
+      </div>
+      <button id="useGeolocationButton" class="use-location-button" type="button">◎ Использовать текущее место</button>
+      <div id="locationSearchStatus" class="location-status" role="status" aria-live="polite"></div>
+      <div id="locationResults" class="location-results"></div>
+      <p class="map-attribution">Данные мест: <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">© OpenStreetMap</a></p>
+    </section>
+  </div>
+
   <div id="installSheet" class="sheet-backdrop" hidden>
     <section class="sheet">
       <div class="sheet-head"><h2>Установить на iPhone</h2><button id="closeSheet" class="close-button" type="button">×</button></div>

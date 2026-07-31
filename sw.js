@@ -1,4 +1,4 @@
-const VERSION="ryadom-pages-v3-themes";
+const VERSION="ryadom-pages-v4-locations";
 const BASE=new URL("./",self.location).pathname;
 const SHELL=[BASE,`${BASE}index.html`,`${BASE}styles.css`,`${BASE}app.js`,`${BASE}manifest.webmanifest`,`${BASE}icon-192.png`,`${BASE}icon-512.png`,`${BASE}apple-touch-icon.png`];
 self.addEventListener("install",event=>event.waitUntil(caches.open(VERSION).then(cache=>cache.addAll(SHELL.map(url=>new Request(url,{cache:"reload"})))).then(()=>self.skipWaiting())));
