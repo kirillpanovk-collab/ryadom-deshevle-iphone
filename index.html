@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f4f5f2">
+  <meta name="description" content="Поиск товаров по фото, названию и штрихкоду с ценами рядом">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="РядомДешевле">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./apple-touch-icon.png">
+  <link rel="icon" href="./icon-192.png">
+  <link rel="stylesheet" href="./styles.css">
+  <title>РядомДешевле</title>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark">⌖</span><span>РядомДешевле</span></div>
+    <button id="installButton" class="header-button" type="button" aria-label="Установить приложение">↓ <span>Установить</span></button>
+  </header>
+
+  <main class="content">
+    <button id="locateButton" class="location-button" type="button"><span class="location-icon">◎</span><span id="locationLabel">Москва · по умолчанию</span></button>
+
+    <section class="hero">
+      <h1>Найдём дешевле рядом</h1>
+      <p>Введите название или сфотографируйте товар. Покажем цены, расстояние и известное наличие.</p>
+    </section>
+
+    <form id="searchForm" class="search-card">
+      <div class="search-row">
+        <input id="searchInput" class="search-input" type="search" autocomplete="off" placeholder="Например, кофе Lavazza" aria-label="Название товара">
+        <label class="photo-button" aria-label="Сфотографировать товар">▣<input id="photoInput" type="file" accept="image/*" capture="environment"></label>
+      </div>
+      <button id="searchButton" class="search-submit" type="submit">Найти цены</button>
+      <div class="quick-searches">
+        <button type="button" data-query="молоко">молоко</button>
+        <button type="button" data-query="кофе">кофе</button>
+        <button type="button" data-query="подгузники">подгузники</button>
+        <button type="button" data-query="шампунь">шампунь</button>
+      </div>
+      <div id="scanStatus" class="scan-status" hidden></div>
+    </form>
+
+    <section id="resultsSection" class="section" hidden>
+      <div class="section-head">
+        <div><h2>Цены рядом</h2><p id="resultsSummary"></p></div>
+        <select id="sortSelect" class="sort-select" aria-label="Сортировка">
+          <option value="price">Сначала дешевле</option>
+          <option value="distance">Сначала ближе</option>
+          <option value="fresh">Свежее</option>
+        </select>
+      </div>
+      <div id="offerList" class="offer-list"></div>
+    </section>
+
+    <section id="providersSection" class="section" hidden>
+      <div class="section-head"><div><h2>Ещё варианты</h2><p>Сравнение в интернет-магазинах</p></div></div>
+      <div id="providerList" class="providers"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div><h2>Магазины рядом</h2><p>До 5 км от выбранного места</p></div>
+        <button id="storesButton" class="icon-button" type="button" aria-label="Найти магазины">↻</button>
+      </div>
+      <div id="storeList" class="store-list"><div class="empty-card">Нажмите ↻, чтобы показать ближайшие магазины.</div></div>
+    </section>
+
+    <footer class="utilities">
+      <span>Обновляется автоматически</span>
+      <label class="catalog-label">⇧ Загрузить CSV-каталог<input id="catalogInput" type="file" accept=".csv,text/csv"></label>
+    </footer>
+  </main>
+
+  <div id="installSheet" class="sheet-backdrop" hidden>
+    <section class="sheet">
+      <div class="sheet-head"><h2>Установить на iPhone</h2><button id="closeSheet" class="close-button" type="button">×</button></div>
+      <p>Откройте эту страницу в Safari. Приложение появится на главном экране и будет обновляться автоматически.</p>
+      <ol class="install-steps"><li>Нажмите «Поделиться»</li><li>Выберите «На экран Домой»</li><li>Нажмите «Добавить»</li></ol>
+      <button id="doneSheet" class="sheet-close" type="button">Понятно</button>
+    </section>
+  </div>
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@zxing/browser@0.2.1/umd/zxing-browser.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@7/dist/tesseract.min.js" defer></script>
+  <script src="./app.js" defer></script>
+</body>
+</html>
