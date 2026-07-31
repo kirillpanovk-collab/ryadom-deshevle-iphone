@@ -1,7 +1,34 @@
 const MOSCOW={lat:55.7558,lon:37.6176,label:"Москва · по умолчанию",precise:false};
 const STORAGE_KEY="ryadom_pages_catalog_v1";
+const THEME_STORAGE_KEY="ryadom_theme_v1";
+const THEME_IDS=["burgundy","ruby","rose","violet","indigo","cobalt","ocean","teal","emerald","forest","amber","graphite"];
+const THEME_COLORS={burgundy:"#741b36",ruby:"#a91f45",rose:"#b13b68",violet:"#6939b7",indigo:"#3f4fb1",cobalt:"#1f5ea8",ocean:"#08718a",teal:"#14766f",emerald:"#187a59",forest:"#2c633f",amber:"#a65f00",graphite:"#514a55"};
 const state={location:{...MOSCOW},query:"",products:[],liveOffers:[],catalog:loadCatalog(),stores:[],sort:"price"};
 const $=selector=>document.querySelector(selector);
+
+function loadThemeSelection(){
+  try{
+    const saved=JSON.parse(localStorage.getItem(THEME_STORAGE_KEY)||"{}");
+    return{theme:THEME_IDS.includes(saved.theme)?saved.theme:"burgundy",mode:["auto","day","night"].includes(saved.mode)?saved.mode:"auto"};
+  }catch{return{theme:"burgundy",mode:"auto"}}
+}
+const themeState=loadThemeSelection();
+const systemColorMode=matchMedia("(prefers-color-scheme: dark)");
+function resolvedColorMode(mode){return mode==="auto"?(systemColorMode.matches?"night":"day"):mode}
+function updateThemeControls(){
+  document.querySelectorAll("[data-theme-choice]").forEach(button=>{const active=button.dataset.themeChoice===themeState.theme;button.classList.toggle("active",active);button.setAttribute("aria-pressed",String(active))});
+  document.querySelectorAll("[data-mode-choice]").forEach(button=>{const active=button.dataset.modeChoice===themeState.mode;button.classList.toggle("active",active);button.setAttribute("aria-pressed",String(active))});
+}
+function applyTheme(theme=themeState.theme,mode=themeState.mode,persist=true){
+  themeState.theme=THEME_IDS.includes(theme)?theme:"burgundy";
+  themeState.mode=["auto","day","night"].includes(mode)?mode:"auto";
+  document.documentElement.dataset.theme=themeState.theme;
+  document.documentElement.dataset.mode=themeState.mode;
+  document.documentElement.dataset.resolvedMode=resolvedColorMode(themeState.mode);
+  const meta=document.querySelector('meta[name="theme-color"]');if(meta)meta.content=THEME_COLORS[themeState.theme];
+  if(persist)localStorage.setItem(THEME_STORAGE_KEY,JSON.stringify(themeState));
+  updateThemeControls();
+}
 
 function escapeHtml(value=""){
   return String(value).replace(/[&<>'"]/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[char]);
@@ -259,6 +286,14 @@ $("#sortSelect").addEventListener("change",event=>{state.sort=event.target.value
 $("#locateButton").addEventListener("click",locateUser);$("#storesButton").addEventListener("click",loadStores);
 $("#photoInput").addEventListener("change",event=>recognizePhoto(event.target.files?.[0]));
 $("#catalogInput").addEventListener("change",event=>importCatalog(event.target.files?.[0]));
+applyTheme(themeState.theme,themeState.mode,false);
+$("#themeButton").addEventListener("click",()=>{$("#themeSheet").hidden=false;updateThemeControls()});
+document.querySelectorAll("[data-theme-choice]").forEach(button=>button.addEventListener("click",()=>applyTheme(button.dataset.themeChoice,themeState.mode)));
+document.querySelectorAll("[data-mode-choice]").forEach(button=>button.addEventListener("click",()=>applyTheme(themeState.theme,button.dataset.modeChoice)));
+$("#closeThemeSheet").addEventListener("click",()=>$("#themeSheet").hidden=true);$("#doneThemeSheet").addEventListener("click",()=>$("#themeSheet").hidden=true);
+$("#themeSheet").addEventListener("click",event=>{if(event.target===$("#themeSheet"))$("#themeSheet").hidden=true});
+const updateAutoTheme=()=>{if(themeState.mode==="auto")applyTheme(themeState.theme,"auto",false)};
+if(systemColorMode.addEventListener)systemColorMode.addEventListener("change",updateAutoTheme);else systemColorMode.addListener(updateAutoTheme);
 $("#installButton").addEventListener("click",()=>$("#installSheet").hidden=false);
 $("#closeSheet").addEventListener("click",()=>$("#installSheet").hidden=true);$("#doneSheet").addEventListener("click",()=>$("#installSheet").hidden=true);
 $("#installSheet").addEventListener("click",event=>{if(event.target===$("#installSheet"))$("#installSheet").hidden=true});

@@ -11,13 +11,19 @@
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./apple-touch-icon.png">
   <link rel="icon" href="./icon-192.png">
+  <script>
+    (()=>{try{const saved=JSON.parse(localStorage.getItem("ryadom_theme_v1")||"{}");const theme=saved.theme||"burgundy";const mode=saved.mode||"auto";const system=matchMedia("(prefers-color-scheme: dark)").matches?"night":"day";document.documentElement.dataset.theme=theme;document.documentElement.dataset.mode=mode;document.documentElement.dataset.resolvedMode=mode==="auto"?system:mode}catch{document.documentElement.dataset.theme="burgundy";document.documentElement.dataset.mode="auto";document.documentElement.dataset.resolvedMode="day"}})();
+  </script>
   <link rel="stylesheet" href="./styles.css">
   <title>РядомДешевле</title>
 </head>
 <body>
   <header class="topbar">
     <div class="brand"><span class="brand-mark">⌖</span><span>РядомДешевле</span></div>
-    <button id="installButton" class="header-button" type="button" aria-label="Установить приложение">↓ <span>Установить</span></button>
+    <div class="header-actions">
+      <button id="themeButton" class="header-button" type="button" aria-label="Выбрать тему">◐ <span>Темы</span></button>
+      <button id="installButton" class="header-button" type="button" aria-label="Установить приложение">↓ <span>Установить</span></button>
+    </div>
   </header>
 
   <main class="content">
@@ -80,6 +86,34 @@
       <p>Откройте эту страницу в Safari. Приложение появится на главном экране и будет обновляться автоматически.</p>
       <ol class="install-steps"><li>Нажмите «Поделиться»</li><li>Выберите «На экран Домой»</li><li>Нажмите «Добавить»</li></ol>
       <button id="doneSheet" class="sheet-close" type="button">Понятно</button>
+    </section>
+  </div>
+
+  <div id="themeSheet" class="sheet-backdrop" hidden>
+    <section class="sheet theme-sheet" role="dialog" aria-modal="true" aria-labelledby="themeTitle">
+      <div class="sheet-head"><h2 id="themeTitle">Оформление</h2><button id="closeThemeSheet" class="close-button" type="button" aria-label="Закрыть">×</button></div>
+      <p class="setting-label">Режим</p>
+      <div class="mode-picker" role="group" aria-label="Режим оформления">
+        <button type="button" data-mode-choice="auto">Авто</button>
+        <button type="button" data-mode-choice="day">День</button>
+        <button type="button" data-mode-choice="night">Ночь</button>
+      </div>
+      <p class="setting-label">Цветовая тема</p>
+      <div class="theme-grid">
+        <button type="button" data-theme-choice="burgundy" style="--swatch:#741b36"><i></i><span>Бургунди</span></button>
+        <button type="button" data-theme-choice="ruby" style="--swatch:#a91f45"><i></i><span>Рубин</span></button>
+        <button type="button" data-theme-choice="rose" style="--swatch:#b13b68"><i></i><span>Роза</span></button>
+        <button type="button" data-theme-choice="violet" style="--swatch:#6939b7"><i></i><span>Фиалка</span></button>
+        <button type="button" data-theme-choice="indigo" style="--swatch:#3f4fb1"><i></i><span>Индиго</span></button>
+        <button type="button" data-theme-choice="cobalt" style="--swatch:#1f5ea8"><i></i><span>Кобальт</span></button>
+        <button type="button" data-theme-choice="ocean" style="--swatch:#08718a"><i></i><span>Океан</span></button>
+        <button type="button" data-theme-choice="teal" style="--swatch:#14766f"><i></i><span>Бирюза</span></button>
+        <button type="button" data-theme-choice="emerald" style="--swatch:#187a59"><i></i><span>Изумруд</span></button>
+        <button type="button" data-theme-choice="forest" style="--swatch:#2c633f"><i></i><span>Лес</span></button>
+        <button type="button" data-theme-choice="amber" style="--swatch:#a65f00"><i></i><span>Янтарь</span></button>
+        <button type="button" data-theme-choice="graphite" style="--swatch:#514a55"><i></i><span>Графит</span></button>
+      </div>
+      <button id="doneThemeSheet" class="sheet-close" type="button">Готово</button>
     </section>
   </div>
   <div id="toast" class="toast" hidden></div>
