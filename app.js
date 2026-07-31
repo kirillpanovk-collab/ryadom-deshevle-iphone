@@ -4,9 +4,55 @@ const THEME_STORAGE_KEY="ryadom_theme_v1";
 const LOCATION_STORAGE_KEY="ryadom_location_v1";
 const LOCATION_CACHE_KEY="ryadom_location_search_cache_v1";
 const GEOCODER_ENDPOINT="https://nominatim.openstreetmap.org";
+const OVERPASS_ENDPOINTS=["https://maps.mail.ru/osm/tools/overpass/api/interpreter","https://overpass-api.de/api/interpreter","https://overpass.private.coffee/api/interpreter"];
+const STORE_RADIUS_METERS=3500;
+const STORE_RADIUS_LABEL="до 3,5 км";
 const THEME_IDS=["burgundy","ruby","rose","violet","indigo","cobalt","ocean","teal","emerald","forest","amber","graphite"];
 const THEME_COLORS={burgundy:"#741b36",ruby:"#a91f45",rose:"#b13b68",violet:"#6939b7",indigo:"#3f4fb1",cobalt:"#1f5ea8",ocean:"#08718a",teal:"#14766f",emerald:"#187a59",forest:"#2c633f",amber:"#a65f00",graphite:"#514a55"};
-const state={location:loadLocation(),locationResults:[],query:"",products:[],liveOffers:[],catalog:loadCatalog(),stores:[],sort:"price"};
+const STORE_CATEGORIES={
+  groceries:{label:"Продуктовые магазины",shops:"supermarket|convenience|greengrocer"},
+  dairy:{label:"Молочные и продуктовые магазины",shops:"dairy|supermarket|convenience"},
+  bakery:{label:"Пекарни и продуктовые магазины",shops:"bakery|supermarket|convenience"},
+  butcher:{label:"Мясные и продуктовые магазины",shops:"butcher|supermarket|convenience"},
+  fish:{label:"Рыбные и продуктовые магазины",shops:"seafood|fishmonger|supermarket|convenience"},
+  drinks:{label:"Напитки и продуктовые магазины",shops:"beverages|supermarket|convenience"},
+  alcohol:{label:"Винные и продуктовые магазины",shops:"alcohol|supermarket"},
+  sweets:{label:"Кондитерские и продуктовые магазины",shops:"confectionery|supermarket|convenience"},
+  beauty:{label:"Косметика и уход",shops:"cosmetics|perfumery|chemist"},
+  pharmacy:{label:"Аптеки и медицинские товары",shops:"chemist|medical_supply",amenities:"pharmacy"},
+  baby:{label:"Детские товары",shops:"baby_goods|chemist|supermarket|convenience"},
+  electronics:{label:"Электроника и бытовая техника",shops:"electronics|mobile_phone|computer|appliance|electrical"},
+  fashion:{label:"Одежда и обувь",shops:"clothes|shoes|fashion_accessories|sports"},
+  home:{label:"Дом, мебель и ремонт",shops:"furniture|houseware|hardware|doityourself|interior_decoration|lighting|garden_centre"},
+  pets:{label:"Зоомагазины",shops:"pet|pet_grooming"},
+  sports:{label:"Спортивные магазины",shops:"sports|outdoor|bicycle"},
+  toys:{label:"Игрушки и хобби",shops:"toys|hobby|games|model"},
+  books:{label:"Книги и канцтовары",shops:"books|stationery|newsagent"},
+  auto:{label:"Автотовары",shops:"car_parts|car_repair|tyres|motorcycle"},
+  jewelry:{label:"Украшения и часы",shops:"jewelry|watches"},
+};
+const STORE_CATEGORY_RULES=[
+  ["pharmacy",/лекар|таблет|капсул|лечебн|сироп от|витамин|антисепт|бинт|медицин|аптеч|парацет|ибупроф|аспирин|medicine|medication|supplement/],
+  ["baby",/подгуз|памперс|детск(?:ое|ая) питан|молочн.*смес|baby|infant|diaper/],
+  ["beauty",/космет|шампун|бальзам для волос|кондиционер для волос|крем|сыворот|помад|тушь|парфюм|духи|дезодорант|гель для душа|мыло|зубн.*паст|beauty|cosmetic|shampoo|skin care|hair care|personal care/],
+  ["dairy",/молок|кефир|йогурт|сыр|творог|сливк|сметан|ряженк|dairy|milk|cheese|yogurt/],
+  ["bakery",/хлеб|батон|булоч|выпеч|багет|лаваш|bread|bakery/],
+  ["butcher",/мясо|говядин|свинин|куриц|индейк|колбас|сосиск|meat|butcher/],
+  ["fish",/рыб|лосос|семг|форел|кревет|морепродукт|seafood|fish/],
+  ["alcohol",/вино|водк|коньяк|виски|пиво|шампан|alcohol|wine|beer/],
+  ["drinks",/вода пить|минерал.*вод|сок|лимонад|газиров|напиток|beverage|juice/],
+  ["sweets",/конфет|шоколад|печень|вафл|торт|мармелад|candy|chocolate|confectionery/],
+  ["electronics",/телефон|смартфон|iphone|ноутбук|компьютер|телевизор|наушник|зарядк|usb|электрон|пылесос|холодильник|стиральн|electronics|smartphone|computer/],
+  ["pets",/корм для (?:кош|соб)|кошач|собач|зоотовар|наполнитель|поводок|pet food|pets/],
+  ["sports",/спорт|гантел|тренажер|велосипед|самокат|лыж|сноуборд|палатк|рюкзак турист|sports|outdoor/],
+  ["toys",/игруш|конструктор|кукл|настольн.*игр|пазл|хобби|toys|games/],
+  ["books",/книг|учебник|тетрад|ручк|карандаш|канцтовар|books|stationery/],
+  ["auto",/автомоб|автотовар|масло мотор|шина|покрышк|аккумулятор|стеклоочист|car part|motor oil/],
+  ["jewelry",/ювелир|украшен|кольцо|сереж|браслет|часы наруч|jewelry|watches/],
+  ["fashion",/одежд|футболк|брюк|джинс|плать|куртк|обув|кроссов|ботин|носк|белье|clothes|shoes|fashion/],
+  ["home",/мебел|стол письмен|стул|шкаф|матрас|посуда|кастрюл|сковород|инструмент|дрель|ламп|краск|обои|ремонт|furniture|hardware|houseware/],
+];
+const state={location:loadLocation(),locationResults:[],query:"",products:[],liveOffers:[],catalog:loadCatalog(),stores:[],storeCategory:null,storeRequestId:0,sort:"price"};
 const $=selector=>document.querySelector(selector);
 
 function loadLocation(){
@@ -94,12 +140,13 @@ function normalizedProduct(raw={}){
     image:String(raw.image_front_small_url||raw.image_front_url||raw.image_url||""),
     quantity:String(raw.quantity||""),
     countries:Array.isArray(raw.countries_tags)?raw.countries_tags:[],
+    categories:Array.isArray(raw.categories_tags)?raw.categories_tags:[String(raw.categories||"")],
   };
 }
 
 async function searchProducts(query){
   const digits=query.replace(/\D/g,"");
-  const fields="code,product_name,product_name_ru,generic_name,brands,quantity,image_front_small_url,image_front_url,image_url,countries_tags";
+  const fields="code,product_name,product_name_ru,generic_name,brands,quantity,image_front_small_url,image_front_url,image_url,countries_tags,categories,categories_tags";
   if(query.trim()===digits&&digits.length>=8&&digits.length<=14){
     const response=await fetch(`https://world.openfoodfacts.org/api/v3.6/product/${digits}.json?fields=${encodeURIComponent(fields)}`);
     if(!response.ok)return[];
@@ -185,12 +232,23 @@ function renderProviders(){
   $("#providerList").innerHTML=providerLinks(state.query).map(([name,hint,url])=>`<a class="provider" href="${url}" target="_blank" rel="noreferrer"><span><strong>${escapeHtml(name)}</strong><small>${escapeHtml(hint)}</small></span><b>↗</b></a>`).join("");
 }
 
+function inferStoreCategory(query,products=[]){
+  const productText=products.flatMap(product=>[product.name,product.brand,...(product.categories||[])]).join(" ");
+  const haystack=normalize(`${query} ${productText}`);
+  const matched=STORE_CATEGORY_RULES.find(([,pattern])=>pattern.test(haystack));
+  return STORE_CATEGORIES[matched?.[0]||"groceries"];
+}
+function updateStoreHint(text){$("#storeHint").textContent=text}
+
 async function performSearch(rawQuery){
   const query=String(rawQuery??$("#searchInput").value).trim();
   if(!query){toast("Введите название товара или сфотографируйте его");return}
   state.query=query;$("#searchInput").value=query;$("#searchButton").disabled=true;$("#searchButton").textContent="Ищем…";
   let catalogueError=false;
   try{state.products=await searchProducts(query)}catch{state.products=[];catalogueError=true}
+  state.storeCategory=inferStoreCategory(query,state.products);
+  updateStoreHint(`${state.storeCategory.label} · ${STORE_RADIUS_LABEL}`);
+  loadStores();
   state.liveOffers=(await Promise.all(state.products.slice(0,6).map(pricesFor))).flat();
   renderOffers();renderProviders();
   if(catalogueError)toast("Каталог временно недоступен — показаны ссылки магазинов");
@@ -217,8 +275,14 @@ async function locateUser(){
 }
 
 function resetStores(){
-  state.stores=[];
-  $("#storeList").innerHTML='<div class="empty-card">Место выбрано. Нажмите ↻, чтобы показать ближайшие магазины.</div>';
+  state.stores=[];state.storeRequestId++;
+  if(state.storeCategory){
+    updateStoreHint(`${state.storeCategory.label} · ${STORE_RADIUS_LABEL}`);
+    $("#storeList").innerHTML='<div class="empty-card">Место выбрано. Обновляем подходящие магазины…</div>';
+  }else{
+    updateStoreHint("Сначала найдите товар — покажем подходящие магазины");
+    $("#storeList").innerHTML='<div class="empty-card">Введите название товара или найдите его по фото.</div>';
+  }
 }
 function loadLocationCache(){try{return JSON.parse(localStorage.getItem(LOCATION_CACHE_KEY)||"{}")||{}}catch{return{}}}
 function saveLocationCache(cache){
@@ -265,25 +329,41 @@ function chooseLocation(location){
 }
 
 async function loadStores(){
+  if(!state.storeCategory){toast("Сначала найдите товар — затем покажем нужные магазины");return}
   const button=$("#storesButton");button.disabled=true;button.textContent="…";
-  const {lat,lon}=state.location,radius=5000;
-  const query=`[out:json][timeout:18];nwr(around:${radius},${lat},${lon})[shop~"supermarket|convenience|chemist|department_store|mall|electronics|clothes|shoes|beauty|mobile_phone|sports|toys|pet|hardware|doityourself"];out center tags 60;`;
+  const requestId=++state.storeRequestId,category=state.storeCategory;
+  const {lat,lon}=state.location,radius=STORE_RADIUS_METERS;
+  const selectors=[`nwr(around:${radius},${lat},${lon})[shop~"${category.shops}"];`];
+  if(category.amenities)selectors.push(`nwr(around:${radius},${lat},${lon})[amenity~"${category.amenities}"];`);
+  const query=`[out:json][timeout:20];(${selectors.join("")});out center tags 60;`;
+  updateStoreHint(`Ищем: ${category.label.toLocaleLowerCase("ru")}…`);
+  $("#storeList").innerHTML='<div class="empty-card">Ищем подходящие магазины рядом…</div>';
   try{
-    const response=await fetch("https://overpass-api.de/api/interpreter",{method:"POST",headers:{"content-type":"application/x-www-form-urlencoded"},body:new URLSearchParams({data:query})});
-    if(!response.ok)throw new Error();
-    const payload=await response.json();
+    let payload=null;
+    for(const endpoint of OVERPASS_ENDPOINTS){
+      const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),24000);
+      try{
+        const response=await fetch(endpoint,{method:"POST",headers:{"content-type":"application/x-www-form-urlencoded"},body:new URLSearchParams({data:query}),signal:controller.signal});
+        if(response.ok){payload=await response.json();break}
+      }catch{}finally{clearTimeout(timer)}
+    }
+    if(!payload)throw new Error();
+    if(requestId!==state.storeRequestId)return;
+    const seen=new Set();
     state.stores=(payload.elements||[]).flatMap(raw=>{
+      const id=`${raw.type}-${raw.id}`;if(seen.has(id))return[];seen.add(id);
       const center=raw.center||{},tags=raw.tags||{},storeLat=number(raw.lat??center.lat),storeLon=number(raw.lon??center.lon);
       if(storeLat===null||storeLon===null)return[];
-      return[{id:`${raw.type}-${raw.id}`,name:tags.name||tags.brand||"Магазин",address:[tags["addr:street"],tags["addr:housenumber"]].filter(Boolean).join(", "),lat:storeLat,lon:storeLon,distance_km:distanceKm(lat,lon,storeLat,storeLon)}];
+      return[{id,name:tags.name||tags.brand||category.label,address:[tags["addr:street"],tags["addr:housenumber"]].filter(Boolean).join(", "),lat:storeLat,lon:storeLon,distance_km:distanceKm(lat,lon,storeLat,storeLon)}];
     }).sort((a,b)=>a.distance_km-b.distance_km).slice(0,30);
-    renderStores();
-  }catch{toast("Не удалось получить магазины рядом")}
-  button.disabled=false;button.textContent="↻";
+    renderStores(category);
+  }catch{if(requestId===state.storeRequestId){$("#storeList").innerHTML='<div class="empty-card">Не удалось загрузить магазины. Нажмите ↻, чтобы повторить.</div>';updateStoreHint(`${category.label} · ${STORE_RADIUS_LABEL}`);toast("Не удалось получить магазины рядом")}}
+  if(requestId===state.storeRequestId){button.disabled=false;button.textContent="↻"}
 }
-function renderStores(){
+function renderStores(category=state.storeCategory){
   const list=$("#storeList");
-  if(!state.stores.length){list.innerHTML='<div class="empty-card">Магазины не найдены.</div>';return}
+  updateStoreHint(`${category.label} · найдено ${state.stores.length} · ${STORE_RADIUS_LABEL}`);
+  if(!state.stores.length){list.innerHTML=`<div class="empty-card">Подходящих магазинов в радиусе ${STORE_RADIUS_LABEL.replace("до ","")} не найдено.</div>`;return}
   list.innerHTML=state.stores.slice(0,8).map(store=>`<a class="store" href="https://maps.apple.com/?ll=${store.lat},${store.lon}&q=${encodeURIComponent(store.name)}"><span><strong>${escapeHtml(store.name)}</strong><span>${escapeHtml(store.address||"Адрес не указан")}</span></span><span class="store-distance">${escapeHtml(formatDistance(store.distance_km))}</span></a>`).join("");
 }
 
